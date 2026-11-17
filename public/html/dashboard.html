@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estatísticas | Política Fundamental</title>
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/estilo.css">
+  <script src="../js/sessao.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body onload="iniciarDashboard()">
+
+  <div class="header">
+    <div class="container">
+      <a class="logo" href="index.html">
+        <img src="../assets/coroa-louros.jpg" alt="Coroa de louros" width="554" height="554">
+      </a>
+
+      <div class="menu">
+        <ul class="navbar">
+          <li><a href="index.html">Início</a></li>
+          <li><a href="linha-do-tempo.html">Linha do Tempo</a></li>
+          <li><a href="pensadores.html">Pensadores</a></li>
+          <li><a href="login.html">Login</a></li>
+          <li><a href="cadastro.html">Cadastro</a></li>
+          <li><a href="dashboard.html">Estatísticas</a></li>
+          <li><a href="sobre.html">Sobre</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <main class="dashboard-page">
+    <div class="container">
+      <div class="dashboard-topo">
+        <div>
+          <p class="dashboard-legenda">Painel de resultados</p>
+          <h1>Estatísticas</h1>
+          <p class="dashboard-subtitulo">Olá, <strong id="nomeUsuario"></strong>. Veja como suas ideias se comparam às da comunidade.</p>
+        </div>
+      </div>
+
+      <div id="dashboardErro" class="dashboard-erro" style="display:none"></div>
+
+      <section class="cards-indicadores">
+        <article class="card-indicador">
+          <span>Usuários cadastrados</span>
+          <strong id="totalUsuarios">--</strong>
+        </article>
+
+        <article class="card-indicador">
+          <span>Questionários respondidos</span>
+          <strong id="totalRespostas">--</strong>
+        </article>
+
+        <article class="card-indicador destaque">
+          <span>Seu pensador</span>
+          <strong id="seuPensador">--</strong>
+        </article>
+      </section>
+
+      <section class="graficos">
+        <article class="grafico-card">
+          <h2>Distribuição dos resultados</h2>
+          <p class="grafico-descricao">Quantidade de pessoas que se identificaram com cada pensador.</p>
+          <div class="grafico-wrap">
+            <canvas id="graficoDistribuicao"></canvas>
+          </div>
+        </article>
+
+        <article class="grafico-card">
+          <h2>Sua similaridade</h2>
+          <p class="grafico-descricao">Percentual de afinidade com o pensador do seu resultado.</p>
+
+          <div class="grafico-wrap grafico-similaridade">
+            <canvas id="graficoSimilaridade"></canvas>
+            <div class="similaridade-centro" id="similaridadeCentro" style="display:none">
+              <strong id="similaridadeValor">0%</strong>
+              <span>afinidade</span>
+            </div>
+          </div>
+
+          <p id="similaridadeVazio" class="grafico-vazio">
+            Você ainda não respondeu ao quiz. <a href="pensadores.html">Acesse Pensadores</a> para fazer o quiz ao final da página.
+          </p>
+        </article>
+      </section>
+
+      <section class="insight" id="insight" style="display:none">
+        <p class="dashboard-legenda">Seu perfil</p>
+        <h2 id="insightPensador"></h2>
+        <p id="insightDescricao"></p>
+      </section>
+    </div>
+  </main>
+
+  <div class="footer">
+    <div class="container footer-inner">
+      <a class="footer-github" href="https://github.com/philipeRetz" target="_blank">https://github.com/philipeRetz</a>
+
+      <ul class="footer-nav">
+        <li><a href="index.html">Início</a></li>
+        <li><a href="linha-do-tempo.html">Linha do Tempo</a></li>
+        <li><a href="pensadores.html">Pensadores</a></li>
+        <li><a href="login.html">Login</a></li>
+        <li><a href="cadastro.html">Cadastro</a></li>
+        <li><a href="dashboard.html">Estatísticas</a></li>
+        <li><a href="sobre.html">Sobre</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container">
+        <p>dedico esse projeto ao meu eu criança, aquele que não tinha medo de errar, e a quem mais se encontrar aqui.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+<script>
+    // Guarda os gráficos para poder recriá-los quando os dados mudarem.
+    let myChartDistribuicao = null;
+    let myChartSimilaridade = null;
+
+    // Confere a sessao e carrega os dados do dashboard.
+    function iniciarDashboard() {
+      if (!validarSessao()) {
+        return;
+      }
+
+      nomeUsuario.textContent = sessionStorage.NOME_USUARIO;
+      carregarDashboard();
+    }
+
+    // Busca os totais e os resultados na API.
+    function carregarDashboard() {
+      let erro = dashboardErro;
+      erro.style.display = "none";
+
+      fetch("/dashboard/dados/" + encodeURIComponent(sessionStorage.ID_USUARIO))
+        .then(function (resposta) {
+          if (resposta.ok) {
+            resposta.json().then(function (json) {
+              renderizarDashboard(json);
+            });
+          } else {
+            resposta.text().then(function (texto) {
+              erro.style.display = "block";
+              erro.innerHTML = texto || "Não foi possível carregar os dados da dashboard.";
+            });
+          }
+        })
+        .catch(function (e) {
+          console.log(e);
+          erro.style.display = "block";
+          erro.innerHTML = "Erro ao conectar com o servidor.";
+        });
+    }
+
+    // Preenche os cards e chama a montagem dos graficos.
+    function renderizarDashboard(dados) {
+      totalUsuarios.innerHTML = dados.totalUsuarios;
+      totalRespostas.innerHTML = dados.totalRespostas;
+
+      if (dados.usuario != null) {
+        seuPensador.innerHTML = dados.usuario.pensador;
+      } else {
+        seuPensador.innerHTML = "Ainda não definido";
+      }
+
+      // Se o Chart.js não carregou, avisa o usuário.
+      if (typeof Chart == "undefined") {
+        let erro = dashboardErro;
+        erro.style.display = "block";
+        erro.innerHTML = "Não foi possível carregar a biblioteca de gráficos.";
+        return;
+      }
+
+      renderizarDistribuicao(dados.distribuicao);
+      renderizarSimilaridade(dados.usuario);
+    }
+
+    // Monta o grafico de barras com a quantidade de cada pensador.
+    function renderizarDistribuicao(distribuicao) {
+      let labels = [];
+      let valores = [];
+
+      for (let i = 0; i < distribuicao.length; i++) {
+        labels.push(distribuicao[i].pensador);
+        valores.push(distribuicao[i].quantidade);
+      }
+
+      // Destrói o gráfico antigo antes de criar outro.
+      if (myChartDistribuicao) {
+        myChartDistribuicao.destroy();
+      }
+
+      myChartDistribuicao = new Chart(graficoDistribuicao, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Resultados",
+            data: valores,
+            backgroundColor: "#c49b42"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // Monta o grafico de rosca com a similaridade do usuario.
+    function renderizarSimilaridade(usuario) {
+      let wrap = graficoSimilaridade.parentElement;
+
+      // Se o usuário ainda não respondeu, esconde o gráfico.
+      if (usuario == null) {
+        graficoSimilaridade.style.display = "none";
+        wrap.style.display = "none";
+        similaridadeCentro.style.display = "none";
+        similaridadeVazio.style.display = "block";
+        insight.style.display = "none";
+        return;
+      }
+
+      // Se respondeu, mostra o gráfico e o texto do perfil.
+      graficoSimilaridade.style.display = "block";
+      wrap.style.display = "block";
+      similaridadeVazio.style.display = "none";
+      similaridadeCentro.style.display = "flex";
+      similaridadeValor.innerHTML = usuario.similaridade + "%";
+
+      insight.style.display = "block";
+      insightPensador.innerHTML = usuario.pensador;
+      insightDescricao.innerHTML = usuario.descricao;
+
+      if (myChartSimilaridade) {
+        myChartSimilaridade.destroy();
+      }
+
+      myChartSimilaridade = new Chart(graficoSimilaridade, {
+        type: "doughnut",
+        data: {
+          labels: ["Afinidade", "Restante"],
+          datasets: [{
+            data: [usuario.similaridade, 100 - usuario.similaridade],
+            backgroundColor: ["#c49b42", "#e5e5e5"],
+            borderWidth: 0,
+            cutout: "72%"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
+      });
+    }
+  </script>

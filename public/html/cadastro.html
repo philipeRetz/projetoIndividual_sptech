@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro | Política Fundamental</title>
+  <link rel="stylesheet" href="../css/cadastro.css">
+  <link rel="stylesheet" href="../css/estilo.css">
+  <script src="../js/sessao.js"></script>
+</head>
+<body class="cadastro-page">
+
+  <div class="login">
+    <div class="container">
+      <div class="card card-cadastro">
+        <img class="logo-login" src="../assets/coroa-louros.jpg" alt="Coroa de louros" width="554" height="554">
+
+        <h2>Criar Conta</h2>
+        <p class="subtitulo">Preencha os dados abaixo para começar.</p>
+
+        <div class="formulario">
+          <div class="campo">
+            <span>Nome completo</span>
+            <input id="ipt_nome" type="text" placeholder="Digite seu nome">
+          </div>
+
+          <div class="campo">
+            <span>E-mail</span>
+            <input id="ipt_email" type="text" placeholder="seuemail@exemplo.com">
+          </div>
+
+          <div class="campo">
+            <span>Senha</span>
+            <input id="ipt_senha" type="text" placeholder="Mínimo de 6 caracteres">
+          </div>
+
+          <div class="campo">
+            <span>Confirmação da Senha</span>
+            <input id="ipt_confirmacao_senha" type="text" placeholder="********">
+          </div>
+
+          <button class="botao" type="button" onclick="cadastrar()">Cadastrar</button>
+        </div>
+
+        <p class="login-footer">
+          Já tem uma conta? <a href="login.html">Faça login</a>
+        </p>
+        <p class="login-footer"><a href="index.html">Voltar ao início</a></p>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>
+
+<script>
+    // Confere se o email tem arroba, ponto depois do arroba e nenhum espaco.
+    function emailValido(email) {
+      let posicaoArroba = email.indexOf("@");
+      let outroArroba = email.indexOf("@", posicaoArroba + 1);
+      let posicaoPonto = email.indexOf(".", posicaoArroba + 1);
+
+      if (posicaoArroba < 1 || outroArroba != -1) {
+        return false;
+      }
+
+      if (posicaoPonto < posicaoArroba + 2 || posicaoPonto >= email.length - 1) {
+        return false;
+      }
+
+      if (email.indexOf(" ") != -1) {
+        return false;
+      }
+
+      return true;
+    }
+
+    // Valida os campos e envia o cadastro para a API.
+    function cadastrar() {
+      let nome = ipt_nome.value;
+      let email = ipt_email.value;
+      let senha = ipt_senha.value;
+      let confirmacao = ipt_confirmacao_senha.value;
+
+      // Primeiro confere se todos os campos foram preenchidos.
+      if (nome == "" || email == "" || senha == "" || confirmacao == "") {
+        alert("Preencha todos os campos.");
+        return;
+      }
+
+      // Depois valida o formato do email.
+      if (!emailValido(email)) {
+        alert("Informe um e-mail válido.");
+        return;
+      }
+
+      // A senha precisa ter pelo menos 6 caracteres.
+      if (senha.length < 6) {
+        alert("A senha deve ter pelo menos 6 caracteres.");
+        return;
+      }
+
+      // As duas senhas digitadas precisam ser iguais.
+      if (senha != confirmacao) {
+        alert("As senhas não coincidem.");
+        return;
+      }
+
+      // Envia os dados para a rota de cadastro do backend.
+      fetch("/usuarios/cadastrar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          nomeServer: nome,
+          emailServer: email,
+          senhaServer: senha
+        })
+      }).then(function (resposta) {
+        if (resposta.ok) {
+          alert("Cadastro realizado com sucesso!");
+          window.location = "login.html";
+          return;
+        }
+
+        // Se o backend recusar, mostra a mensagem de erro (ex.: email repetido).
+        resposta.text().then(function (texto) {
+          alert(texto || "Erro ao tentar realizar o cadastro.");
+        });
+      }).catch(function (erro) {
+        console.log(erro);
+        alert("Erro ao conectar com o servidor.");
+      });
+    }
+  </script>

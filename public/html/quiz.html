@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz | Política Fundamental</title>
+  <link rel="stylesheet" href="../css/quiz.css">
+  <link rel="stylesheet" href="../css/estilo.css">
+  <script src="../js/sessao.js"></script>
+</head>
+<body onload="iniciarQuiz()">
+
+  <div class="header">
+    <div class="container">
+      <a class="logo" href="index.html">
+        <img src="../assets/coroa-louros.jpg" alt="Coroa de louros" width="554" height="554">
+      </a>
+
+      <div class="menu">
+        <ul class="navbar">
+          <li><a href="index.html">Início</a></li>
+          <li><a href="linha-do-tempo.html">Linha do Tempo</a></li>
+          <li><a href="pensadores.html">Pensadores</a></li>
+          <li><a href="login.html">Login</a></li>
+          <li><a href="cadastro.html">Cadastro</a></li>
+          <li><a href="dashboard.html">Estatísticas</a></li>
+          <li><a href="sobre.html">Sobre</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <main class="quiz-page">
+    <div class="container">
+      <section class="quiz-card">
+        <div class="quiz-topo">
+          <span id="quizProgressoTexto">Carregando...</span>
+          <div class="progresso">
+            <div id="quizProgressoBarra" class="progresso-barra"></div>
+          </div>
+        </div>
+
+        <div id="quizCarregando" class="quiz-status">Carregando perguntas...</div>
+        <div id="quizErro" class="quiz-status erro" style="display:none"></div>
+
+        <div id="quizPergunta" style="display:none">
+          <p id="quizNumero" class="quiz-numero"></p>
+          <h2 id="quizTexto" class="quiz-texto"></h2>
+
+          <div class="quiz-opcoes">
+            <button class="btn-opcao" type="button" onclick="responder('sim')">Sim</button>
+            <button class="btn-opcao" type="button" onclick="responder('nao')">Não</button>
+          </div>
+        </div>
+
+        <div id="quizResultado" style="display:none">
+          <p class="resultado-legenda">Seu resultado</p>
+          <h2 id="resultadoPensador" class="resultado-pensador"></h2>
+          <p id="resultadoSimilaridade" class="resultado-similaridade"></p>
+          <p id="resultadoDescricao" class="resultado-descricao"></p>
+
+          <div class="quiz-acoes">
+            <button class="btn-primario" type="button" onclick="refazerQuiz()">Refazer quiz</button>
+            <a class="btn-secundario" href="dashboard.html">Ver estatísticas</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="footer">
+    <div class="container footer-inner">
+      <a class="footer-github" href="https://github.com/philipeRetz" target="_blank">https://github.com/philipeRetz</a>
+
+      <ul class="footer-nav">
+        <li><a href="index.html">Início</a></li>
+        <li><a href="linha-do-tempo.html">Linha do Tempo</a></li>
+        <li><a href="pensadores.html">Pensadores</a></li>
+        <li><a href="login.html">Login</a></li>
+        <li><a href="cadastro.html">Cadastro</a></li>
+        <li><a href="dashboard.html">Estatísticas</a></li>
+        <li><a href="sobre.html">Sobre</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container">
+        <p>dedico esse projeto ao meu eu criança, aquele que não tinha medo de errar, e a quem mais se encontrar aqui.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+<script>
+    // Guarda as perguntas vindas da API e o estado atual do quiz.
+    let perguntas = [];
+    let indiceAtual = 0;
+    let respostas = [];
+
+    // Verifica a sessão e começa o carregamento das perguntas.
+    function iniciarQuiz() {
+      if (!validarSessao()) {
+        return;
+      }
+
+      carregarPerguntas();
+    }
+
+    // Busca as perguntas do quiz na API.
+    function carregarPerguntas() {
+      quizErro.style.display = "none";
+      quizCarregando.style.display = "block";
+      quizCarregando.innerHTML = "Carregando perguntas...";
+      quizPergunta.style.display = "none";
+      quizResultado.style.display = "none";
+
+      fetch("/quiz/perguntas")
+        .then(function (resposta) {
+          if (resposta.ok) {
+            resposta.json().then(function (json) {
+              // Guarda as perguntas e reinicia o quiz do zero.
+              perguntas = json;
+              indiceAtual = 0;
+              respostas = [];
+
+              quizCarregando.style.display = "none";
+              quizPergunta.style.display = "block";
+              exibirPergunta();
+            });
+          } else {
+            quizCarregando.style.display = "none";
+            quizErro.style.display = "block";
+            quizErro.innerHTML = "Não foi possível carregar as perguntas.";
+          }
+        })
+        .catch(function (e) {
+          console.log(e);
+          quizCarregando.style.display = "none";
+          quizErro.style.display = "block";
+          quizErro.innerHTML = "Erro ao conectar com o servidor.";
+        });
+    }
+
+    // Mostra a pergunta atual e atualiza a barra de progresso.
+    function exibirPergunta() {
+      let pergunta = perguntas[indiceAtual];
+
+      quizNumero.innerHTML =
+        "Questão " + (indiceAtual + 1) + " de " + perguntas.length;
+      quizTexto.innerHTML = pergunta.texto;
+      quizProgressoTexto.innerHTML =
+        (indiceAtual + 1) + " / " + perguntas.length;
+
+      // Calcula quantos por cento do quiz já foi respondido.
+      let percentual = Math.round((indiceAtual / perguntas.length) * 100);
+      quizProgressoBarra.style.width = percentual + "%";
+    }
+
+    // Guarda a resposta e passa para a proxima pergunta.
+    function responder(valor) {
+      respostas.push({
+        idPergunta: perguntas[indiceAtual].id,
+        resposta: valor
+      });
+
+      indiceAtual++;
+
+      // Enquanto houver perguntas, continua mostrando uma de cada vez.
+      if (indiceAtual < perguntas.length) {
+        exibirPergunta();
+      } else {
+        quizProgressoBarra.style.width = "100%";
+        quizProgressoTexto.innerHTML = "Resultado";
+        enviarRespostas();
+      }
+    }
+
+    // Envia todas as respostas para a API calcular o resultado.
+    function enviarRespostas() {
+      quizPergunta.style.display = "none";
+      quizErro.style.display = "none";
+      quizCarregando.style.display = "block";
+      quizCarregando.innerHTML = "Calculando seu resultado...";
+
+      fetch("/quiz/responder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          idUsuario: Number(sessionStorage.ID_USUARIO),
+          respostas: respostas
+        })
+      }).then(function (resposta) {
+        if (resposta.ok) {
+          resposta.json().then(function (json) {
+            // Mostra o pensador e a similaridade devolvidos pela API.
+            quizCarregando.style.display = "none";
+            quizResultado.style.display = "block";
+            resultadoPensador.innerHTML = json.pensador;
+            resultadoSimilaridade.innerHTML =
+              "Você tem <strong>" + json.similaridade + "%</strong> de semelhança com esse pensador.";
+            resultadoDescricao.innerHTML = json.descricao;
+          });
+        } else {
+          resposta.text().then(function (texto) {
+            quizCarregando.style.display = "none";
+            quizErro.style.display = "block";
+            quizErro.innerHTML = texto || "Erro ao calcular o resultado.";
+          });
+        }
+      }).catch(function (e) {
+        console.log(e);
+        quizCarregando.style.display = "none";
+        quizErro.style.display = "block";
+        quizErro.innerHTML = "Erro ao conectar com o servidor.";
+      });
+    }
+
+    // Reinicia o quiz sem recarregar a pagina.
+    function refazerQuiz() {
+      quizResultado.style.display = "none";
+      quizCarregando.style.display = "none";
+      quizErro.style.display = "none";
+      quizPergunta.style.display = "block";
+      quizProgressoBarra.style.width = "0%";
+
+      indiceAtual = 0;
+      respostas = [];
+      exibirPergunta();
+    }
+  </script>
